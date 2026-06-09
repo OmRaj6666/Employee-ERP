@@ -19,10 +19,15 @@ const COOKIE_SECURE = process.env.COOKIE_SECURE === 'true' || FORCE_HTTPS;
 
 const APP_ORIGIN =
   process.env.APP_ORIGIN ||
-  `http://localhost:${PORT}`;
+  'https://employee-erp-ii89.onrender.com';
 
 const ADMIN_USER = process.env.ADMIN_USER || 'admin';
 const ADMIN_PASS = process.env.ADMIN_PASS || 'admin123';
+
+console.log('ADMIN_USER:', ADMIN_USER);
+console.log('ADMIN_PASS EXISTS:', !!ADMIN_PASS);
+console.log('APP_ORIGIN:', APP_ORIGIN);
+
 const SESSION_TTL_MINUTES = Number(process.env.SESSION_TTL_MINUTES || 30);
 const SESSION_TTL_MS = 1000 * 60 * SESSION_TTL_MINUTES;
 const sessions = new Map();
@@ -182,7 +187,7 @@ function requireAllowedOrigin(req, res, next) {
 }
 
 // ---------- Auth routes ----------
-app.post('/auth/login', authLimiter, requireAllowedOrigin, (req, res) => {
+app.post('/auth/login', authLimiter, (req, res) => {
   const user = sanitizeText(req.body?.username, 64);
   const pass = typeof req.body?.password === 'string' ? req.body.password : '';
 
