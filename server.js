@@ -12,18 +12,20 @@ app.disable('x-powered-by');
 
 // ---------- Environment config ----------
 const PORT = Number(process.env.PORT || 3000);
-const HOST = process.env.HOST || '127.0.0.1';
+const HOST = '0.0.0.0';
+
 const FORCE_HTTPS = process.env.FORCE_HTTPS === 'true';
 const COOKIE_SECURE = process.env.COOKIE_SECURE === 'true' || FORCE_HTTPS;
-const APP_ORIGIN = process.env.APP_ORIGIN || `http://${HOST}:${PORT}`;
+
+const APP_ORIGIN =
+  process.env.APP_ORIGIN ||
+  `http://localhost:${PORT}`;
 
 const ADMIN_USER = process.env.ADMIN_USER || 'admin';
-// Set ADMIN_PASS in env for production. Fallback keeps current local UX.
-const ADMIN_PASS = process.env.ADMIN_PASS || 'raj';
-
+const ADMIN_PASS = process.env.ADMIN_PASS || 'admin123';
 const SESSION_TTL_MINUTES = Number(process.env.SESSION_TTL_MINUTES || 30);
 const SESSION_TTL_MS = 1000 * 60 * SESSION_TTL_MINUTES;
-const sessions = new Map(); // token -> expiry timestamp
+const sessions = new Map();
 
 // ---------- Security middleware ----------
 app.use(
@@ -71,11 +73,10 @@ if (FORCE_HTTPS) {
 
 // ---------- DB setup ----------
 const pool = new Pool({
-  user: process.env.PGUSER || 'omraj',
-  host: process.env.PGHOST || 'localhost',
-  database: process.env.PGDATABASE || 'bankdb',
-  password: process.env.PGPASSWORD || 'YOUR_POSTGRES_PASSWORD',
-  port: Number(process.env.PGPORT || 5432),
+  connectionString: process.env.DATABASE_URL,
+  ssl: {
+    rejectUnauthorized: false
+  }
 });
 
 let useInMemory = false;
