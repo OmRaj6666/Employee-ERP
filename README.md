@@ -1,78 +1,183 @@
-# Employee Website
+# 🚀 Employee ERP Management System
 
-Local dev instructions:
+A modern Employee Management System built using **Node.js, Express.js, PostgreSQL (Neon Database), HTML, CSS, and JavaScript**.
 
-1. Install dependencies:
+### 🌐 Live Demo
+
+https://employee-erp-ii89.onrender.com/
+
+### 📂 GitHub Repository
+https://github.com/OmRaj6666/Employee-ERP.git
+
+---
+
+## ✨ Features
+
+* 🔐 Secure Admin Login
+* 👨‍💼 Add Employees
+* 🗑️ Delete Employees
+* 📋 View Employee Records
+* ☁️ PostgreSQL Cloud Database (Neon)
+* 🚀 Deployed on Render
+* 🛡️ Helmet Security
+* ⏱️ Rate Limiting Protection
+* 🍪 Session Authentication
+* 📱 Responsive Dashboard UI
+
+---
+
+## 🛠️ Tech Stack
+
+### Frontend
+
+* HTML5
+* CSS3
+* JavaScript
+* Bootstrap 5
+
+### Backend
+
+* Node.js
+* Express.js
+
+### Database
+
+* PostgreSQL
+* Neon Database
+
+### Deployment
+
+* Render
+
+---
+
+## 📦 Installation
+
+Clone Repository
+
+```bash
+git clone https://github.com/OmRaj6666/Employee-ERP.git
+cd Employee-ERP
+```
+
+Install Dependencies
 
 ```bash
 npm install
 ```
 
-2. Start the server:
+Start Server
 
 ```bash
-node server.js
-# or
 npm start
 ```
 
-3. Open http://127.0.0.1:3000 in your browser.
-
-Security and auth
-- The app now uses backend session authentication (HttpOnly cookie), not localStorage auth.
-- Default local login credentials (for development):
-	- username: `admin`
-	- password: `raj`
-- In production, set environment variables and do NOT use defaults:
+or
 
 ```bash
-export ADMIN_USER="admin"
-export ADMIN_PASS="change_this_to_a_strong_secret"
-```
-
-Environment variables
-- `PORT` default `3000`
-- `HOST` default `127.0.0.1`
-- `APP_ORIGIN` default `http://127.0.0.1:3000` (used for origin validation)
-- `FORCE_HTTPS` set `true` to enforce HTTPS redirect behavior behind a TLS proxy
-- `COOKIE_SECURE` set `true` in HTTPS production
-- `PGUSER`, `PGHOST`, `PGDATABASE`, `PGPASSWORD`, `PGPORT` for Postgres connection
-
-HTTPS/TLS
-- Native HTTPS is supported when both certificate paths are provided:
-
-```bash
-export HTTPS_KEY_PATH="/absolute/path/to/key.pem"
-export HTTPS_CERT_PATH="/absolute/path/to/cert.pem"
 node server.js
 ```
 
-- When these are set, the app serves over `https://...`.
-- If not set, it runs HTTP locally and logs a TLS setup hint.
+Open Browser
 
-Notes:
-- The reserve feature is client-side (localStorage). If you need server persistence, I can add API + DB changes.
-- For automatic restarts during development, you can install `nodemon` and run `npx nodemon server.js`.
-- Configure DB credentials via environment variables instead of editing code.
+```text
+http://localhost:3000
+```
 
-Database modes
-- Postgres: If Postgres is available and the connection succeeds, the server will use Postgres and persist records to the `employees` table.
-- In-memory fallback: If Postgres is not reachable, the server will automatically fall back to an in-memory store so the UI remains functional. This data is ephemeral and will be lost when the server restarts.
+---
 
-To use Postgres (recommended for persistence):
-1. Ensure Postgres is running and set `PG*` environment variables.
-2. Create the `employees` table (example SQL):
+## 🔑 Default Login
+
+Development Mode:
+
+```text
+Username: admin
+Password: admin123
+```
+
+For production, configure environment variables.
+
+---
+
+## ⚙️ Environment Variables
+
+Create a .env file:
+
+```env
+DATABASE_URL=YOUR_NEON_DATABASE_URL
+
+ADMIN_USER=admin
+ADMIN_PASS=your_secure_password
+
+APP_ORIGIN=http://localhost:3000
+
+NODE_ENV=development
+```
+
+Production Example:
+
+```env
+DATABASE_URL=YOUR_NEON_DATABASE_URL
+
+ADMIN_USER=admin
+ADMIN_PASS=your_secure_password
+
+APP_ORIGIN=https://employee-erp-ii89.onrender.com
+
+NODE_ENV=production
+```
+
+---
+
+## 🗄️ Database Schema
 
 ```sql
 CREATE TABLE IF NOT EXISTS employees (
-	emp_id SERIAL PRIMARY KEY,
-	fname TEXT NOT NULL,
-	lname TEXT NOT NULL,
-	email TEXT,
-	dept TEXT,
-	salary NUMERIC,
-	created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+    emp_id SERIAL PRIMARY KEY,
+    fname VARCHAR(50) NOT NULL,
+    lname VARCHAR(50) NOT NULL,
+    email VARCHAR(100),
+    dept VARCHAR(50),
+    salary NUMERIC(10,2),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 ```
 
-If you prefer me to add migrations or persist the "reserve" flag to the database, say so and I will implement it.
+---
+
+## 🚀 Deployment
+
+### Backend Hosting
+
+Render
+
+### Database Hosting
+
+Neon PostgreSQL
+
+### Production URL
+
+https://employee-erp-ii89.onrender.com
+
+---
+
+## 📸 Screenshots
+
+Add screenshots of:
+
+* Login Page
+* Dashboard
+* Employee Management Panel
+* Database Records
+
+---
+
+## 👨‍💻 Developer
+
+**Om Raj**
+
+
+
+## 📜 License
+
+This project is open-source and available under the MIT License.
