@@ -5,6 +5,25 @@ const appPrefs = {
     reservedOnly: localStorage.getItem('reservedOnly') === 'true'
 };
 
+const viewMeta = {
+    dashboardView: {
+        title: 'Dashboard',
+        meta: 'Operational overview for Raj Construction.'
+    },
+    employeesView: {
+        title: 'Employees',
+        meta: 'Manage workforce records, departments, and payroll details.'
+    },
+    reportsView: {
+        title: 'Reports',
+        meta: 'Review department distribution and payroll totals.'
+    },
+    settingsView: {
+        title: 'Settings',
+        meta: 'System health, session details, and local preferences.'
+    }
+};
+
 function escapeHtml(value){
     return String(value ?? '').replace(/[&<>"']/g, (char) => ({
         '&': '&amp;',
@@ -23,6 +42,13 @@ function formatCurrency(value){
         currency: 'INR',
         maximumFractionDigits: 0
     }).format(amount);
+}
+
+function formatTime(value = new Date()){
+    return new Intl.DateTimeFormat('en-IN', {
+        hour: '2-digit',
+        minute: '2-digit'
+    }).format(value);
 }
 
 function getCurrentFilters(){
@@ -158,6 +184,7 @@ function updateReports(){
             : 'Add employees before generating a meaningful report.';
     }
     renderMetricBreakdown('departmentBreakdown', metrics.departments);
+    renderReportInsights(metrics);
 }
 
 function updateSettingsUI(){
@@ -172,7 +199,68 @@ function updateAllViews(){
     renderEmployees();
     updateDashboard();
     updateReports();
+    renderRecentEmployees();
     updateSettingsUI();
+}
+
+function updateSyncLabels(){
+    const label = `Synced ${formatTime()}`;
+    const lastSync = document.getElementById('lastSync');
+    const sidebarSync = document.getElementById('sidebarSync');
+    if(lastSync) lastSync.innerText = label;
+    if(sidebarSync) sidebarSync.innerText = label;
+}
+
+function renderRecentEmployees(){
+    const container = document.getElementById('recentEmployees');
+    if(!container) return;
+
+    const recent = employeesCache.slice(-4).reverse();
+    if(!recent.length){
+        container.innerHTML = '<div class="empty-state">No recent employees yet.</div>';
+        return;
+    }
+
+    container.innerHTML = recent.map((emp) => {
+        const name = `${emp.fname || ''} ${emp.lname || ''}`.trim() || 'Unnamed employee';
+        return `
+            <div class="mini-row">
+                <span>
+                    <strong>${escapeHtml(name)}</strong>
+                    <small>${escapeHtml(emp.dept || 'Unassigned')} · ${escapeHtml(emp.email || 'No email')}</small>
+                </span>
+                <strong>${formatCurrency(emp.salary)}</strong>
+            </div>`;
+    }).join('');
+}
+
+function renderReportInsights(metrics){
+    const container = document.getElementById('reportInsights');
+    if(!container) return;
+
+    if(!metrics.totalEmployees){
+        container.innerHTML = '<div class="empty-state">No insights available until employees are added.</div>';
+        return;
+    }
+
+    const departmentEntries = Array.from(metrics.departments.entries());
+    const largestDepartment = departmentEntries.sort((a, b) => b[1].count - a[1].count)[0];
+    const avgPerDepartment = metrics.departmentCount ? metrics.totalEmployees / metrics.departmentCount : 0;
+    const activeReservedCount = Array.from(getReservedSet()).filter((id) => employeesCache.some((emp) => String(emp.emp_id) === id)).length;
+
+    container.innerHTML = `
+        <div class="insight-card">
+            <strong>${escapeHtml(largestDepartment?.[0] || 'Unassigned')}</strong>
+            <span>Largest department by headcount</span>
+        </div>
+        <div class="insight-card">
+            <strong>${avgPerDepartment.toFixed(1)}</strong>
+            <span>Average employees per department</span>
+        </div>
+        <div class="insight-card">
+            <strong>${activeReservedCount}</strong>
+            <span>Reserved records in current dataset</span>
+        </div>`;
 }
 
 function renderEmployees(){
@@ -246,6 +334,7 @@ async function loadEmployees(){
 
         updateDepartmentFilter(employeesCache);
         updateAllViews();
+        updateSyncLabels();
 
     }catch(err){
         console.error(err);
@@ -398,8 +487,13 @@ function setupIdleTracking(){
 function showView(viewId){
     const views = document.querySelectorAll('.app-view');
     const navItems = document.querySelectorAll('.nav-item');
+    const current = viewMeta[viewId] || viewMeta.dashboardView;
     views.forEach((view) => view.classList.toggle('active', view.id === viewId));
     navItems.forEach((item) => item.classList.toggle('active', item.dataset.view === viewId));
+    const title = document.getElementById('currentViewTitle');
+    const meta = document.getElementById('currentViewMeta');
+    if(title) title.innerText = current.title;
+    if(meta) meta.innerText = current.meta;
     localStorage.setItem('activeView', viewId);
     if(viewId === 'settingsView') refreshSystemStatus();
 }
@@ -497,6 +591,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
     const profile = document.getElementById('profileBtn'); if(profile) profile.addEventListener('click', ()=> showView('settingsView'));
     const report = document.getElementById('createReportBtn'); if(report) report.addEventListener('click', ()=> createPdfReport());
     const reportPage = document.getElementById('createReportPageBtn'); if(reportPage) reportPage.addEventListener('click', ()=> createPdfReport());
+    const refreshDataBtn = document.getElementById('refreshDataBtn'); if(refreshDataBtn) refreshDataBtn.addEventListener('click', loadEmployees);
     const logoutBtn = document.getElementById('logoutBtn'); if(logoutBtn) logoutBtn.addEventListener('click', logout);
     const logoutMenuBtn = document.getElementById('logoutMenuBtn'); if(logoutMenuBtn) logoutMenuBtn.addEventListener('click', logout);
     const employeeSearch = document.getElementById('employeeSearch'); if(employeeSearch) employeeSearch.addEventListener('input', renderEmployees);
