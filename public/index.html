@@ -53,10 +53,12 @@
                 <h2>Raj Construction — Admin Login</h2>
             </div>
             <p class="muted">Manage your workforce and projects</p>
-            <input id="loginUser" class="form-control mb-2" placeholder="Username">
-            <input id="loginPass" type="password" class="form-control mb-2" placeholder="Password">
+            <label class="visually-hidden" for="loginUser">Username</label>
+            <input id="loginUser" class="form-control mb-2" placeholder="Username" autocomplete="username">
+            <label class="visually-hidden" for="loginPass">Password</label>
+            <input id="loginPass" type="password" class="form-control mb-2" placeholder="Password" autocomplete="current-password">
             <button id="loginBtn" class="btn btn-primary w-100">Login</button>
-            <p class="small muted mt-2">Default: username <strong>admin</strong>, password <strong>admin123</strong></p>
+            <p class="small muted mt-2">Default: username <strong>admin</strong>, password <strong>raj</strong></p>
         </div>
     </div>
 
@@ -71,11 +73,11 @@
             <span>Raj Construction</span>
         </div>
 
-        <div class="menu">
-            <div class="item">Dashboard</div>
-            <div class="item">Employees</div>
-            <div class="item">Reports</div>
-            <div class="item">Settings</div>
+        <div class="menu" aria-label="Primary navigation">
+            <button class="item nav-item active" type="button" data-view="dashboardView">Dashboard</button>
+            <button class="item nav-item" type="button" data-view="employeesView">Employees</button>
+            <button class="item nav-item" type="button" data-view="reportsView">Reports</button>
+            <button class="item nav-item" type="button" data-view="settingsView">Settings</button>
             <button id="logoutMenuBtn" class="item logout-item" style="display:none">Logout</button>
         </div>
 
@@ -93,67 +95,245 @@
                 <span>Raj Construction</span>
             </div>
             <div class="actions">
-                <button id="profileBtn" class="btn btn-outline-secondary btn-sm">Profile</button>
+                <button id="profileBtn" class="btn btn-outline-secondary btn-sm" type="button">Profile</button>
                 <button id="logoutBtn" class="btn btn-outline-danger btn-sm ms-2" style="display:none">Logout</button>
             </div>
         </div>
 
-        <div class="hero">
-            <div>
-                <div class="title">Raj Construction Employee Management</div>
-                <div class="subtitle">Track workforce, departments, and payroll with smart reporting.</div>
+        <section id="dashboardView" class="app-view active">
+            <div class="hero">
+                <div>
+                    <div class="title">Raj Construction Employee Management</div>
+                    <div class="subtitle">Track workforce, departments, and payroll with smart reporting.</div>
+                </div>
+                <div class="hero-actions">
+                    <button class="btn btn-outline-secondary" type="button" data-nav-target="employeesView">Add Employee</button>
+                    <button id="createReportBtn" class="btn btn-primary" type="button">Create Report</button>
+                </div>
             </div>
-            <div>
-                <button id="createReportBtn" class="btn btn-primary">Create Report</button>
-            </div>
-        </div>
 
-        <div class="stats mb-3">
-            <div class="stat-card">
-                <h3 id="count">0</h3>
-                <p>Total employees</p>
+            <div class="stats mb-3">
+                <div class="stat-card">
+                    <h3 id="count">0</h3>
+                    <p>Total employees</p>
+                </div>
+                <div class="stat-card">
+                    <h3 id="departments">--</h3>
+                    <p>Departments</p>
+                </div>
+                <div class="stat-card">
+                    <h3 id="avgSalary">--</h3>
+                    <p>Avg Salary</p>
+                </div>
             </div>
-            <div class="stat-card">
-                <h3 id="departments">--</h3>
-                <p>Departments</p>
-            </div>
-            <div class="stat-card">
-                <h3 id="avgSalary">--</h3>
-                <p>Avg Salary</p>
-            </div>
-        </div>
 
-        <div class="panel mb-4">
-            <h4>Add Employee</h4>
-            <div class="form-grid mt-3">
-                <input id="fname" class="form-control" placeholder="First Name">
-                <input id="lname" class="form-control" placeholder="Last Name">
-                <input id="email" class="form-control" placeholder="Email">
-                <input id="dept" class="form-control" placeholder="Department">
-                <input id="salary" class="form-control" placeholder="Salary">
+            <div class="dashboard-grid">
+                <div class="panel">
+                    <div class="panel-heading">
+                        <div>
+                            <h4>Workforce Snapshot</h4>
+                            <p id="dashboardSnapshot">Loading workforce summary...</p>
+                        </div>
+                    </div>
+                    <div id="dashboardDepartments" class="metric-list mt-3"></div>
+                </div>
+                <div class="panel">
+                    <div class="panel-heading">
+                        <div>
+                            <h4>Quick Actions</h4>
+                            <p>Common actions for today.</p>
+                        </div>
+                    </div>
+                    <div class="action-list mt-3">
+                        <button class="btn btn-primary" type="button" data-nav-target="employeesView">Manage Employees</button>
+                        <button class="btn btn-outline-secondary" type="button" data-nav-target="reportsView">Open Reports</button>
+                        <button class="btn btn-outline-secondary" type="button" data-nav-target="settingsView">Review Settings</button>
+                    </div>
+                </div>
             </div>
-            <div class="mt-3">
-                <button id="addEmployeeBtn" class="btn btn-primary">Add Employee</button>
-            </div>
-        </div>
+        </section>
 
-        <div class="panel">
-            <h4>Employee Records</h4>
-            <div class="table-responsive mt-3">
-                <table class="table align-middle">
-                    <thead>
-                        <tr>
-                            <th>ID</th>
-                            <th>Name</th>
-                            <th>Department</th>
-                            <th>Salary</th>
-                            <th>Action</th>
-                        </tr>
-                    </thead>
-                    <tbody id="tableBody"></tbody>
-                </table>
+        <section id="employeesView" class="app-view">
+            <div class="view-header">
+                <div>
+                    <h1>Employees</h1>
+                    <p>Add, find, reserve, copy, and remove workforce records.</p>
+                </div>
             </div>
-        </div>
+
+            <div class="panel mb-4">
+                <div class="panel-heading">
+                    <div>
+                        <h4>Add Employee</h4>
+                        <p>Capture the essentials needed for workforce tracking.</p>
+                    </div>
+                </div>
+                <div class="form-grid mt-3">
+                    <div>
+                        <label for="fname" class="form-label">First name</label>
+                        <input id="fname" class="form-control" placeholder="Amit" autocomplete="given-name">
+                    </div>
+                    <div>
+                        <label for="lname" class="form-label">Last name</label>
+                        <input id="lname" class="form-control" placeholder="Sharma" autocomplete="family-name">
+                    </div>
+                    <div>
+                        <label for="email" class="form-label">Email</label>
+                        <input id="email" class="form-control" type="email" placeholder="amit@example.com" autocomplete="email">
+                    </div>
+                    <div>
+                        <label for="dept" class="form-label">Department</label>
+                        <input id="dept" class="form-control" placeholder="Site Operations">
+                    </div>
+                    <div>
+                        <label for="salary" class="form-label">Salary</label>
+                        <input id="salary" class="form-control" type="number" min="0" step="1" placeholder="45000" inputmode="numeric">
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <button id="addEmployeeBtn" class="btn btn-primary" type="button">Add Employee</button>
+                </div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-heading records-heading">
+                    <div>
+                        <h4>Employee Records</h4>
+                        <p id="recordSummary">Loading records...</p>
+                    </div>
+                    <div class="table-tools" aria-label="Employee table controls">
+                        <label class="visually-hidden" for="employeeSearch">Search employees</label>
+                        <input id="employeeSearch" class="form-control form-control-sm" placeholder="Search name, ID, or department">
+                        <label class="visually-hidden" for="departmentFilter">Filter by department</label>
+                        <select id="departmentFilter" class="form-select form-select-sm" aria-label="Filter by department">
+                            <option value="">All departments</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="table-responsive mt-3">
+                    <table class="table align-middle">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Name</th>
+                                <th>Department</th>
+                                <th>Salary</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <section id="reportsView" class="app-view">
+            <div class="view-header">
+                <div>
+                    <h1>Reports</h1>
+                    <p>Generate payroll and department summaries from the current employee records.</p>
+                </div>
+                <button id="createReportPageBtn" class="btn btn-primary" type="button">Download PDF</button>
+            </div>
+
+            <div class="stats mb-3">
+                <div class="stat-card">
+                    <h3 id="reportEmployeeCount">0</h3>
+                    <p>Employees in report</p>
+                </div>
+                <div class="stat-card">
+                    <h3 id="reportPayrollTotal">--</h3>
+                    <p>Total payroll</p>
+                </div>
+                <div class="stat-card">
+                    <h3 id="reportReservedCount">0</h3>
+                    <p>Reserved employees</p>
+                </div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-heading">
+                    <div>
+                        <h4>Department Breakdown</h4>
+                        <p id="reportSummary">Loading report summary...</p>
+                    </div>
+                </div>
+                <div id="departmentBreakdown" class="metric-list mt-3"></div>
+            </div>
+        </section>
+
+        <section id="settingsView" class="app-view">
+            <div class="view-header">
+                <div>
+                    <h1>Settings</h1>
+                    <p>Review app status, session behavior, and local display preferences.</p>
+                </div>
+            </div>
+
+            <div class="settings-grid">
+                <div class="panel">
+                    <div class="panel-heading">
+                        <div>
+                            <h4>System Status</h4>
+                            <p id="systemStatusSummary">Checking system status...</p>
+                        </div>
+                    </div>
+                    <div id="systemStatusList" class="metric-list mt-3"></div>
+                </div>
+
+                <div class="panel">
+                    <div class="panel-heading">
+                        <div>
+                            <h4>Display Preferences</h4>
+                            <p>These settings are saved in this browser.</p>
+                        </div>
+                    </div>
+                    <div class="settings-list mt-3">
+                        <label class="setting-row" for="compactModeToggle">
+                            <span>
+                                <strong>Compact table</strong>
+                                <small>Reduce spacing in employee records.</small>
+                            </span>
+                            <input id="compactModeToggle" class="form-check-input" type="checkbox">
+                        </label>
+                        <label class="setting-row" for="reservedOnlyToggle">
+                            <span>
+                                <strong>Show reserved only</strong>
+                                <small>Filter employee records to reserved workers.</small>
+                            </span>
+                            <input id="reservedOnlyToggle" class="form-check-input" type="checkbox">
+                        </label>
+                    </div>
+                </div>
+
+                <div class="panel">
+                    <div class="panel-heading">
+                        <div>
+                            <h4>Security</h4>
+                            <p>Current login and session behavior.</p>
+                        </div>
+                    </div>
+                    <div class="metric-list mt-3">
+                        <div class="metric-row">
+                            <span>Authentication</span>
+                            <strong id="authStatus">Checking...</strong>
+                        </div>
+                        <div class="metric-row">
+                            <span>Idle auto logout</span>
+                            <strong>30 minutes</strong>
+                        </div>
+                        <div class="metric-row">
+                            <span>Default credentials</span>
+                            <strong>Use env vars before production</strong>
+                        </div>
+                    </div>
+                    <div class="action-list mt-3">
+                        <button id="refreshSystemBtn" class="btn btn-outline-secondary" type="button">Refresh Status</button>
+                        <button class="btn btn-outline-danger" type="button" data-action="logout">Logout</button>
+                    </div>
+                </div>
+            </div>
+        </section>
 
     </div>
 
