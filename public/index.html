@@ -58,7 +58,7 @@
             <label class="visually-hidden" for="loginPass">Password</label>
             <input id="loginPass" type="password" class="form-control mb-2" placeholder="Password" autocomplete="current-password">
             <button id="loginBtn" class="btn btn-primary w-100">Login</button>
-            <p class="small muted mt-2">Default: username <strong>admin</strong>, password <strong>admin123</strong></p>
+            <p class="small muted mt-2">Default: username <strong>admin</strong>, password <strong>raj</strong></p>
         </div>
     </div>
 
@@ -73,11 +73,17 @@
             <span>Raj Construction</span>
         </div>
 
+        <div class="workspace-card">
+            <span class="eyebrow">Workspace</span>
+            <strong>Admin Console</strong>
+            <small id="sidebarSync">Waiting for sync</small>
+        </div>
+
         <div class="menu" aria-label="Primary navigation">
-            <button class="item nav-item active" type="button" data-view="dashboardView">Dashboard</button>
-            <button class="item nav-item" type="button" data-view="employeesView">Employees</button>
-            <button class="item nav-item" type="button" data-view="reportsView">Reports</button>
-            <button class="item nav-item" type="button" data-view="settingsView">Settings</button>
+            <button class="item nav-item active" type="button" data-view="dashboardView"><span class="nav-mark">D</span>Dashboard</button>
+            <button class="item nav-item" type="button" data-view="employeesView"><span class="nav-mark">E</span>Employees</button>
+            <button class="item nav-item" type="button" data-view="reportsView"><span class="nav-mark">R</span>Reports</button>
+            <button class="item nav-item" type="button" data-view="settingsView"><span class="nav-mark">S</span>Settings</button>
             <button id="logoutMenuBtn" class="item logout-item" style="display:none">Logout</button>
         </div>
 
@@ -100,9 +106,22 @@
             </div>
         </div>
 
+        <div class="app-header">
+            <div>
+                <span class="eyebrow">Current View</span>
+                <h1 id="currentViewTitle">Dashboard</h1>
+                <p id="currentViewMeta">Operational overview for Raj Construction.</p>
+            </div>
+            <div class="header-actions">
+                <span id="lastSync" class="status-pill">Not synced</span>
+                <button id="refreshDataBtn" class="btn btn-outline-secondary btn-sm" type="button">Refresh</button>
+            </div>
+        </div>
+
         <section id="dashboardView" class="app-view active">
             <div class="hero">
                 <div>
+                    <span class="eyebrow">Workforce Operations</span>
                     <div class="title">Raj Construction Employee Management</div>
                     <div class="subtitle">Track workforce, departments, and payroll with smart reporting.</div>
                 </div>
@@ -114,14 +133,17 @@
 
             <div class="stats mb-3">
                 <div class="stat-card">
+                    <span class="stat-label">Headcount</span>
                     <h3 id="count">0</h3>
                     <p>Total employees</p>
                 </div>
                 <div class="stat-card">
+                    <span class="stat-label">Coverage</span>
                     <h3 id="departments">--</h3>
                     <p>Departments</p>
                 </div>
                 <div class="stat-card">
+                    <span class="stat-label">Payroll</span>
                     <h3 id="avgSalary">--</h3>
                     <p>Avg Salary</p>
                 </div>
@@ -137,17 +159,29 @@
                     </div>
                     <div id="dashboardDepartments" class="metric-list mt-3"></div>
                 </div>
-                <div class="panel">
-                    <div class="panel-heading">
-                        <div>
-                            <h4>Quick Actions</h4>
-                            <p>Common actions for today.</p>
+                <div class="dashboard-stack">
+                    <div class="panel">
+                        <div class="panel-heading">
+                            <div>
+                                <h4>Quick Actions</h4>
+                                <p>Common actions for today.</p>
+                            </div>
+                        </div>
+                        <div class="action-list mt-3">
+                            <button class="btn btn-primary" type="button" data-nav-target="employeesView">Manage Employees</button>
+                            <button class="btn btn-outline-secondary" type="button" data-nav-target="reportsView">Open Reports</button>
+                            <button class="btn btn-outline-secondary" type="button" data-nav-target="settingsView">Review Settings</button>
                         </div>
                     </div>
-                    <div class="action-list mt-3">
-                        <button class="btn btn-primary" type="button" data-nav-target="employeesView">Manage Employees</button>
-                        <button class="btn btn-outline-secondary" type="button" data-nav-target="reportsView">Open Reports</button>
-                        <button class="btn btn-outline-secondary" type="button" data-nav-target="settingsView">Review Settings</button>
+
+                    <div class="panel">
+                        <div class="panel-heading">
+                            <div>
+                                <h4>Recent Employees</h4>
+                                <p>Latest records loaded from the system.</p>
+                            </div>
+                        </div>
+                        <div id="recentEmployees" class="mini-list mt-3"></div>
                     </div>
                 </div>
             </div>
@@ -159,6 +193,7 @@
                     <h1>Employees</h1>
                     <p>Add, find, reserve, copy, and remove workforce records.</p>
                 </div>
+                <button class="btn btn-outline-secondary" type="button" data-nav-target="dashboardView">Back to Dashboard</button>
             </div>
 
             <div class="panel mb-4">
@@ -259,6 +294,16 @@
                     </div>
                 </div>
                 <div id="departmentBreakdown" class="metric-list mt-3"></div>
+            </div>
+
+            <div class="panel mt-3">
+                <div class="panel-heading">
+                    <div>
+                        <h4>Report Insights</h4>
+                        <p>Automatic notes from the current dataset.</p>
+                    </div>
+                </div>
+                <div id="reportInsights" class="insight-grid mt-3"></div>
             </div>
         </section>
 
