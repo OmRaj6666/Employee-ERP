@@ -1,43 +1,258 @@
 // Robust frontend logic for employee-website
+let employeesCache = [];
+const appPrefs = {
+    compactTable: localStorage.getItem('compactTable') === 'true',
+    reservedOnly: localStorage.getItem('reservedOnly') === 'true'
+};
+
+function escapeHtml(value){
+    return String(value ?? '').replace(/[&<>"']/g, (char) => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;'
+    }[char]));
+}
+
+function formatCurrency(value){
+    const amount = Number(value);
+    if(!Number.isFinite(amount)) return '—';
+    return new Intl.NumberFormat('en-IN', {
+        style: 'currency',
+        currency: 'INR',
+        maximumFractionDigits: 0
+    }).format(amount);
+}
+
+function getCurrentFilters(){
+    return {
+        search: (document.getElementById('employeeSearch')?.value || '').trim().toLowerCase(),
+        department: document.getElementById('departmentFilter')?.value || ''
+    };
+}
+
+function getFilteredEmployees(){
+    const { search, department } = getCurrentFilters();
+    const reservedSet = getReservedSet();
+    return employeesCache.filter((emp) => {
+        const dept = emp.dept || 'Unassigned';
+        const haystack = [
+            emp.emp_id,
+            emp.fname,
+            emp.lname,
+            emp.email,
+            dept,
+            emp.salary
+        ].join(' ').toLowerCase();
+
+        const matchesSearch = !search || haystack.includes(search);
+        const matchesDepartment = !department || dept === department;
+        const matchesReserved = !appPrefs.reservedOnly || reservedSet.has(String(emp.emp_id));
+        return matchesSearch && matchesDepartment && matchesReserved;
+    });
+}
+
+function updateDepartmentFilter(data){
+    const filter = document.getElementById('departmentFilter');
+    if(!filter) return;
+
+    const previous = filter.value;
+    const departments = Array.from(new Set(data.map(emp => emp.dept || 'Unassigned'))).sort();
+    filter.innerHTML = '<option value="">All departments</option>' + departments.map((dept) => (
+        `<option value="${escapeHtml(dept)}">${escapeHtml(dept)}</option>`
+    )).join('');
+
+    if(departments.includes(previous)) filter.value = previous;
+}
+
+function updateSummary(visibleCount, totalCount){
+    const summary = document.getElementById('recordSummary');
+    if(!summary) return;
+    if(!totalCount){
+        summary.innerText = 'No employees have been added yet.';
+        return;
+    }
+    summary.innerText = visibleCount === totalCount
+        ? `${totalCount} employee${totalCount === 1 ? '' : 's'} in the system`
+        : `${visibleCount} of ${totalCount} employee${totalCount === 1 ? '' : 's'} shown`;
+}
+
+function getWorkforceMetrics(data = employeesCache){
+    const departments = new Map();
+    let totalSalary = 0;
+    let salaryCount = 0;
+
+    data.forEach((emp) => {
+        const dept = emp.dept || 'Unassigned';
+        const current = departments.get(dept) || { count: 0, payroll: 0 };
+        const salary = Number(emp.salary) || 0;
+        current.count += 1;
+        current.payroll += salary;
+        departments.set(dept, current);
+        if(Number.isFinite(Number(emp.salary))){
+            totalSalary += salary;
+            salaryCount += 1;
+        }
+    });
+
+    return {
+        totalEmployees: data.length,
+        departmentCount: departments.size,
+        departments,
+        totalSalary,
+        averageSalary: salaryCount ? totalSalary / salaryCount : null,
+        reservedCount: getReservedSet().size
+    };
+}
+
+function renderMetricBreakdown(containerId, departments){
+    const container = document.getElementById(containerId);
+    if(!container) return;
+
+    const entries = Array.from(departments.entries()).sort((a, b) => b[1].count - a[1].count);
+    if(!entries.length){
+        container.innerHTML = '<div class="empty-state">No department data available.</div>';
+        return;
+    }
+
+    const max = Math.max(...entries.map(([, details]) => details.count), 1);
+    container.innerHTML = entries.map(([dept, details]) => {
+        const width = Math.max(8, Math.round((details.count / max) * 100));
+        return `
+            <div class="metric-row">
+                <span>
+                    <strong>${escapeHtml(dept)}</strong>
+                    <span class="employee-subtle">${details.count} employee${details.count === 1 ? '' : 's'} · ${formatCurrency(details.payroll)}</span>
+                    <span class="metric-bar" aria-hidden="true"><span style="width:${width}%"></span></span>
+                </span>
+                <strong>${details.count}</strong>
+            </div>`;
+    }).join('');
+}
+
+function updateDashboard(){
+    const metrics = getWorkforceMetrics();
+    const snapshot = document.getElementById('dashboardSnapshot');
+    if(snapshot){
+        snapshot.innerText = metrics.totalEmployees
+            ? `${metrics.totalEmployees} employee${metrics.totalEmployees === 1 ? '' : 's'} across ${metrics.departmentCount} department${metrics.departmentCount === 1 ? '' : 's'}.`
+            : 'No employee records are available yet.';
+    }
+    renderMetricBreakdown('dashboardDepartments', metrics.departments);
+}
+
+function updateReports(){
+    const metrics = getWorkforceMetrics();
+    const reportCount = document.getElementById('reportEmployeeCount');
+    const payrollTotal = document.getElementById('reportPayrollTotal');
+    const reservedCount = document.getElementById('reportReservedCount');
+    const reportSummary = document.getElementById('reportSummary');
+
+    if(reportCount) reportCount.innerText = metrics.totalEmployees;
+    if(payrollTotal) payrollTotal.innerText = formatCurrency(metrics.totalSalary);
+    if(reservedCount) reservedCount.innerText = Array.from(getReservedSet()).filter((id) => employeesCache.some((emp) => String(emp.emp_id) === id)).length;
+    if(reportSummary){
+        reportSummary.innerText = metrics.totalEmployees
+            ? 'This breakdown is generated from the latest employee records.'
+            : 'Add employees before generating a meaningful report.';
+    }
+    renderMetricBreakdown('departmentBreakdown', metrics.departments);
+}
+
+function updateSettingsUI(){
+    document.body.classList.toggle('compact-table', appPrefs.compactTable);
+    const compactToggle = document.getElementById('compactModeToggle');
+    const reservedToggle = document.getElementById('reservedOnlyToggle');
+    if(compactToggle) compactToggle.checked = appPrefs.compactTable;
+    if(reservedToggle) reservedToggle.checked = appPrefs.reservedOnly;
+}
+
+function updateAllViews(){
+    renderEmployees();
+    updateDashboard();
+    updateReports();
+    updateSettingsUI();
+}
+
+function renderEmployees(){
+    const tbody = document.getElementById('tableBody');
+    if(!tbody) return;
+
+    const data = getFilteredEmployees();
+    const reservedSet = getReservedSet();
+
+    if(!employeesCache.length){
+        tbody.innerHTML = '<tr><td colspan="5" class="empty-state">No employees yet. Add the first record above.</td></tr>';
+        updateSummary(0, 0);
+        return;
+    }
+
+    if(!data.length){
+        tbody.innerHTML = '<tr><td colspan="5" class="empty-state">No employees match the current filters.</td></tr>';
+        updateSummary(0, employeesCache.length);
+        return;
+    }
+
+    const rows = data.map(emp => {
+        const id = escapeHtml(emp.emp_id);
+        const reserved = reservedSet.has(String(emp.emp_id));
+        const name = `${emp.fname || ''} ${emp.lname || ''}`.trim() || 'Unnamed employee';
+        const dept = emp.dept || 'Unassigned';
+        return `
+            <tr data-id="${id}" class="${reserved? 'reserved-row':''}">
+                <td>${id}</td>
+                <td>
+                    <span class="employee-name">${escapeHtml(name)}</span>
+                    <span class="employee-subtle">${escapeHtml(emp.email || 'No email')}</span>
+                </td>
+                <td>${escapeHtml(dept)}</td>
+                <td><span class="salary-value">${formatCurrency(emp.salary)}</span></td>
+                <td>
+                    <div class="table-actions">
+                        <button class="btn btn-outline-danger btn-sm" type="button" data-action="delete" data-id="${id}">Delete</button>
+                        <button class="btn btn-outline-secondary btn-sm" type="button" data-action="copy" data-id="${id}">Copy</button>
+                        <button class="btn btn-reserve btn-sm ${reserved? 'active':''}" type="button" data-action="reserve" data-id="${id}">${reserved? 'Reserved':'Reserve'}</button>
+                    </div>
+                </td>
+            </tr>`;
+    }).join('');
+
+    tbody.innerHTML = rows;
+    updateSummary(data.length, employeesCache.length);
+}
+
 async function loadEmployees(){
     try{
+        const tbody = document.getElementById('tableBody');
+        if(tbody) tbody.innerHTML = '<tr><td colspan="5" class="empty-state">Loading employees...</td></tr>';
         const res = await fetch('/employees', { credentials: 'same-origin' });
+        if(!res.ok) throw new Error(await res.text());
         const data = await res.json();
+        employeesCache = Array.isArray(data) ? data : [];
 
-        document.getElementById('count').innerText = data.length || 0;
+        document.getElementById('count').innerText = employeesCache.length || 0;
 
         const depts = new Set();
         let totalSalary = 0;
 
-        const reservedSet = new Set(JSON.parse(localStorage.getItem('reservedEmployees') || '[]'));
-
-        const rows = data.map(emp => {
-            depts.add(emp.dept || '—');
+        employeesCache.forEach(emp => {
+            depts.add(emp.dept || 'Unassigned');
             totalSalary += Number(emp.salary) || 0;
-            const reserved = reservedSet.has(String(emp.emp_id));
-            return `
-                <tr data-id="${emp.emp_id}" class="${reserved? 'reserved-row':''}">
-                    <td>${emp.emp_id}</td>
-                    <td>${emp.fname} ${emp.lname}</td>
-                    <td>${emp.dept}</td>
-                    <td>₹${emp.salary}</td>
-                    <td>
-                      <button class="btn btn-outline-danger btn-sm" data-action="delete" data-id="${emp.emp_id}">Delete</button>
-                      <button class="btn btn-outline-secondary btn-sm ms-2" data-action="copy" data-id="${emp.emp_id}">Copy</button>
-                      <button class="btn btn-reserve btn-sm ms-2 ${reserved? 'active':''}" data-action="reserve" data-id="${emp.emp_id}">${reserved? 'Reserved':'Reserve'}</button>
-                    </td>
-                </tr>`;
-        }).join('');
-
-        document.getElementById('tableBody').innerHTML = rows;
+        });
 
         document.getElementById('departments').innerText = depts.size || 0;
-        document.getElementById('avgSalary').innerText = depts.size? `₹${Math.round(totalSalary / (data.length || 1))}` : '—';
+        document.getElementById('avgSalary').innerText = employeesCache.length ? formatCurrency(totalSalary / employeesCache.length) : '—';
 
-        // table actions are handled via delegated listener attached once on DOMContentLoaded
+        updateDepartmentFilter(employeesCache);
+        updateAllViews();
 
     }catch(err){
         console.error(err);
+        const tbody = document.getElementById('tableBody');
+        if(tbody) tbody.innerHTML = '<tr><td colspan="5" class="empty-state">Could not load employee records.</td></tr>';
+        updateSummary(0, 0);
+        showToast('Failed to load employees');
     }
 }
 
@@ -58,6 +273,14 @@ async function addEmployee(){
 
     const addBtn = document.getElementById('addEmployeeBtn');
     try{
+        if(!payload.fname || !payload.lname){
+            showToast('First and last name are required');
+            return;
+        }
+        if(payload.salary && Number(payload.salary) < 0){
+            showToast('Salary cannot be negative');
+            return;
+        }
         if(addBtn){ addBtn.disabled = true; addBtn.innerText = 'Adding...'; }
         const res = await fetch('/employees', {
             method:'POST',
@@ -98,12 +321,10 @@ async function deleteEmployee(id, btn){
 
 async function copyEmployee(id){
     try{
-        const tr = document.querySelector(`tr[data-id="${id}"]`);
-        if(!tr) return showToast('No record to copy');
-        const name = tr.children[1].innerText.trim();
-        const dept = tr.children[2].innerText.trim();
-        const salary = tr.children[3].innerText.trim();
-        const text = `ID: ${id}\nName: ${name}\nDepartment: ${dept}\nSalary: ${salary}`;
+        const emp = employeesCache.find((item) => String(item.emp_id) === String(id));
+        if(!emp) return showToast('No record to copy');
+        const name = `${emp.fname || ''} ${emp.lname || ''}`.trim() || 'Unnamed employee';
+        const text = `ID: ${emp.emp_id}\nName: ${name}\nEmail: ${emp.email || 'No email'}\nDepartment: ${emp.dept || 'Unassigned'}\nSalary: ${formatCurrency(emp.salary)}`;
         if(navigator.clipboard && navigator.clipboard.writeText){
             await navigator.clipboard.writeText(text);
             showToast('Employee copied to clipboard');
@@ -135,6 +356,9 @@ function toggleReserve(id, btn){
     if(tr) tr.classList.toggle('reserved-row');
     if(btn) btn.classList.toggle('active');
     if(btn) btn.innerText = btn.classList.contains('active')? 'Reserved':'Reserve';
+    updateDashboard();
+    updateReports();
+    if(appPrefs.reservedOnly) renderEmployees();
 }
 
 function showToast(msg, timeout=2500){
@@ -171,6 +395,95 @@ function setupIdleTracking(){
     resetIdleTimer();
 }
 
+function showView(viewId){
+    const views = document.querySelectorAll('.app-view');
+    const navItems = document.querySelectorAll('.nav-item');
+    views.forEach((view) => view.classList.toggle('active', view.id === viewId));
+    navItems.forEach((item) => item.classList.toggle('active', item.dataset.view === viewId));
+    localStorage.setItem('activeView', viewId);
+    if(viewId === 'settingsView') refreshSystemStatus();
+}
+
+function setupNavigation(){
+    document.querySelectorAll('[data-view]').forEach((item) => {
+        item.addEventListener('click', () => showView(item.dataset.view));
+    });
+
+    document.querySelectorAll('[data-nav-target]').forEach((item) => {
+        item.addEventListener('click', () => showView(item.dataset.navTarget));
+    });
+
+    document.querySelectorAll('[data-action="logout"]').forEach((item) => {
+        item.addEventListener('click', logout);
+    });
+
+    const savedView = localStorage.getItem('activeView');
+    if(savedView && document.getElementById(savedView)) showView(savedView);
+}
+
+function setupSettings(){
+    updateSettingsUI();
+
+    const compactToggle = document.getElementById('compactModeToggle');
+    if(compactToggle){
+        compactToggle.addEventListener('change', () => {
+            appPrefs.compactTable = compactToggle.checked;
+            localStorage.setItem('compactTable', String(appPrefs.compactTable));
+            updateSettingsUI();
+            showToast('Display preference saved');
+        });
+    }
+
+    const reservedToggle = document.getElementById('reservedOnlyToggle');
+    if(reservedToggle){
+        reservedToggle.addEventListener('change', () => {
+            appPrefs.reservedOnly = reservedToggle.checked;
+            localStorage.setItem('reservedOnly', String(appPrefs.reservedOnly));
+            renderEmployees();
+            updateSettingsUI();
+            showToast('Employee filter preference saved');
+        });
+    }
+
+    const refreshBtn = document.getElementById('refreshSystemBtn');
+    if(refreshBtn) refreshBtn.addEventListener('click', refreshSystemStatus);
+}
+
+async function refreshSystemStatus(){
+    const summary = document.getElementById('systemStatusSummary');
+    const list = document.getElementById('systemStatusList');
+    const authStatus = document.getElementById('authStatus');
+
+    try{
+        if(summary) summary.innerText = 'Checking system status...';
+        const [statusRes, authRes] = await Promise.all([
+            fetch('/system/status', { credentials: 'same-origin' }),
+            fetch('/auth/me', { credentials: 'same-origin' })
+        ]);
+
+        if(!statusRes.ok) throw new Error(await statusRes.text());
+        const status = await statusRes.json();
+        const auth = authRes.ok ? await authRes.json() : { authenticated: false };
+
+        if(authStatus) authStatus.innerText = auth.authenticated ? 'Signed in' : 'Signed out';
+        if(summary) summary.innerText = `${status.database} database · ${status.https ? 'HTTPS enabled' : 'HTTP local mode'}`;
+        if(list){
+            list.innerHTML = `
+                <div class="metric-row"><span>Database</span><strong>${escapeHtml(status.database)}</strong></div>
+                <div class="metric-row"><span>Server</span><strong>${escapeHtml(status.host)}:${escapeHtml(status.port)}</strong></div>
+                <div class="metric-row"><span>HTTPS</span><strong>${status.https ? 'Enabled' : 'Not configured'}</strong></div>
+                <div class="metric-row"><span>Secure cookie</span><strong>${status.cookieSecure ? 'Enabled' : 'Disabled'}</strong></div>
+                <div class="metric-row"><span>Session TTL</span><strong>${escapeHtml(status.sessionTtlMinutes)} minutes</strong></div>
+                <div class="metric-row"><span>Active sessions</span><strong>${escapeHtml(status.activeSessions)}</strong></div>`;
+        }
+    }catch(err){
+        console.error(err);
+        if(authStatus) authStatus.innerText = 'Unknown';
+        if(summary) summary.innerText = 'System status is unavailable.';
+        if(list) list.innerHTML = '<div class="empty-state">Could not load system settings.</div>';
+    }
+}
+
 // Initialize
 document.addEventListener('DOMContentLoaded', ()=>{
     // auth gate
@@ -179,10 +492,15 @@ document.addEventListener('DOMContentLoaded', ()=>{
     const addBtn = document.getElementById('addEmployeeBtn');
     if(addBtn) addBtn.addEventListener('click', (e)=>{ e.preventDefault(); addEmployee(); });
     // wire profile and report buttons
-    const profile = document.getElementById('profileBtn'); if(profile) profile.addEventListener('click', ()=> showToast('Profile clicked'));
+    setupNavigation();
+    setupSettings();
+    const profile = document.getElementById('profileBtn'); if(profile) profile.addEventListener('click', ()=> showView('settingsView'));
     const report = document.getElementById('createReportBtn'); if(report) report.addEventListener('click', ()=> createPdfReport());
+    const reportPage = document.getElementById('createReportPageBtn'); if(reportPage) reportPage.addEventListener('click', ()=> createPdfReport());
     const logoutBtn = document.getElementById('logoutBtn'); if(logoutBtn) logoutBtn.addEventListener('click', logout);
     const logoutMenuBtn = document.getElementById('logoutMenuBtn'); if(logoutMenuBtn) logoutMenuBtn.addEventListener('click', logout);
+    const employeeSearch = document.getElementById('employeeSearch'); if(employeeSearch) employeeSearch.addEventListener('input', renderEmployees);
+    const departmentFilter = document.getElementById('departmentFilter'); if(departmentFilter) departmentFilter.addEventListener('change', renderEmployees);
     // init background parallax
     initBgParallax();
     // attach table delegation once
@@ -214,6 +532,7 @@ function initAuth(){
             if(logoutBtn) logoutBtn.style.display = '';
             if(logoutMenuBtn) logoutMenuBtn.style.display = '';
             loadEmployees();
+            if(document.getElementById('settingsView')?.classList.contains('active')) refreshSystemStatus();
         } else {
             if(loginScreen) loginScreen.style.display = 'flex';
             if(content) content.style.display = 'none';
@@ -315,10 +634,14 @@ function initBgParallax(){
 
 // Create PDF report: bar graph (employees per department) + table
 async function createPdfReport(){
-    const btn = document.getElementById('createReportBtn');
-    if(btn){ btn.disabled = true; btn.innerText = 'Generating...'; }
+    const buttons = [document.getElementById('createReportBtn'), document.getElementById('createReportPageBtn')].filter(Boolean);
+    buttons.forEach((btn) => { btn.disabled = true; btn.innerText = 'Generating...'; });
     try{
+        if(typeof Chart === 'undefined' || typeof html2canvas === 'undefined' || !window.jspdf){
+            throw new Error('Report libraries are unavailable');
+        }
         const res = await fetch('/employees', { credentials: 'same-origin' });
+        if(!res.ok) throw new Error(await res.text());
         const data = await res.json();
 
         // prepare counts per department
@@ -343,7 +666,8 @@ async function createPdfReport(){
         html += '<thead><tr><th style="text-align:left;padding:6px;border-bottom:1px solid #ddd">ID</th><th style="text-align:left;padding:6px;border-bottom:1px solid #ddd">Name</th><th style="text-align:left;padding:6px;border-bottom:1px solid #ddd">Department</th><th style="text-align:left;padding:6px;border-bottom:1px solid #ddd">Salary</th></tr></thead>';
         html += '<tbody>';
         data.forEach(e=>{
-            html += `<tr><td style="padding:6px;border-bottom:1px solid #f0f0f0">${e.emp_id}</td><td style="padding:6px;border-bottom:1px solid #f0f0f0">${e.fname} ${e.lname}</td><td style="padding:6px;border-bottom:1px solid #f0f0f0">${e.dept || ''}</td><td style="padding:6px;border-bottom:1px solid #f0f0f0">${e.salary}</td></tr>`;
+            const name = `${e.fname || ''} ${e.lname || ''}`.trim() || 'Unnamed employee';
+            html += `<tr><td style="padding:6px;border-bottom:1px solid #f0f0f0">${escapeHtml(e.emp_id)}</td><td style="padding:6px;border-bottom:1px solid #f0f0f0">${escapeHtml(name)}</td><td style="padding:6px;border-bottom:1px solid #f0f0f0">${escapeHtml(e.dept || 'Unassigned')}</td><td style="padding:6px;border-bottom:1px solid #f0f0f0">${formatCurrency(e.salary)}</td></tr>`;
         });
         html += '</tbody></table>';
         tbl.innerHTML = html;
@@ -377,6 +701,9 @@ async function createPdfReport(){
         console.error(err);
         showToast('Failed to generate report');
     } finally {
-        if(btn){ btn.disabled = false; btn.innerText = 'Create Report'; }
+        buttons.forEach((btn) => {
+            btn.disabled = false;
+            btn.innerText = btn.id === 'createReportPageBtn' ? 'Download PDF' : 'Create Report';
+        });
     }
 }
